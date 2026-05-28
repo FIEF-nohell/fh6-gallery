@@ -12,6 +12,9 @@
 # brainstorming companion scratch
 /.superpowers
 
+# nano-banana image generation scratch (keep generated icons in app/ instead)
+/nanobanana-output
+
 # misc
 .DS_Store
 *.pem
