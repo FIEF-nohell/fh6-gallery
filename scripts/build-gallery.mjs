@@ -10,6 +10,7 @@ import sharp from "sharp";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const RAW_FH6_DIR = path.join(ROOT, "raw_fh6");
@@ -27,6 +28,33 @@ function slugify(name) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+// A timestamp baked into the filename, e.g. "Screenshot 2026-05-28 213705" or
+// "2026-05-28_21-37-05". Returns ms, or null if the name has no date.
+function filenameTimeMs(name) {
+  const m = name.match(
+    /(20\d{2})[-_.]?(\d{2})[-_.]?(\d{2})[ _T-]+(\d{2})[-_.:]?(\d{2})[-_.:]?(\d{2})?/
+  );
+  if (!m) return null;
+  const [, Y, Mo, D, H, Mi, S] = m;
+  const d = new Date(+Y, +Mo - 1, +D, +H, +Mi, +(S || 0));
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
+// When the file was last committed (git stores this; survives a fresh clone on
+// Vercel, unlike filesystem timestamps). Returns ms, or null if unavailable.
+function gitTimeMs(relFromRoot) {
+  try {
+    const out = execFileSync(
+      "git",
+      ["log", "-1", "--format=%ct", "--", relFromRoot.split(path.sep).join("/")],
+      { cwd: ROOT, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }
+    ).trim();
+    return out ? parseInt(out, 10) * 1000 : null;
+  } catch {
+    return null;
+  }
 }
 
 // Recursively collect every image under raw_fh6/, regardless of folders.
@@ -81,13 +109,19 @@ async function processImage(img) {
     .toBuffer();
   const blurDataURL = `data:image/webp;base64,${blurBuf.toString("base64")}`;
 
+  // Sort time: real capture time from the filename if present, else when the
+  // photo was added to the repo (git), else the file's modified time.
+  const sortTime =
+    filenameTimeMs(path.basename(full)) ?? gitTimeMs(path.relative(ROOT, full)) ?? stat.mtimeMs;
+
   return {
     id: relSlug,
     src: `/gallery/${relSlug}.webp`,
     width,
     height,
     blurDataURL,
-    mtime: stat.mtimeMs,
+    sortTime,
+    sortName: fileBase,
   };
 }
 
@@ -108,9 +142,13 @@ async function main() {
     }
   }
 
-  // Newest first by file modified time, then drop the sort key from output.
-  photos.sort((a, b) => b.mtime - a.mtime);
-  for (const p of photos) delete p.mtime;
+  // Newest first; stable filename tiebreak for photos sharing a time (e.g. a
+  // batch committed together). Drop the sort keys from the output.
+  photos.sort((a, b) => b.sortTime - a.sortTime || b.sortName.localeCompare(a.sortName));
+  for (const p of photos) {
+    delete p.sortTime;
+    delete p.sortName;
+  }
 
   const manifest = {
     generatedAt: new Date().toISOString(),
