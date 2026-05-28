@@ -1,0 +1,16 @@
+{
+  "_readme": "OPTIONAL. Add a photo by its path 'album-folder/filename.png' to set a custom title, caption, or tags. Anything you leave out falls back to auto-generated values. Rename an album under 'albums'. Delete entries you don't need — this whole file is optional.",
+
+  "audi-s1/audi-s1-front-side-ur.png": {
+    "title": "Front Three-Quarter",
+    "caption": "Vertical crop, golden hour"
+  },
+  "rx7-fd/rx7-night.png": {
+    "title": "Night Run",
+    "tags": ["night", "neon"]
+  },
+
+  "albums": {
+    "nature": { "name": "Scenery" }
+  }
+}
