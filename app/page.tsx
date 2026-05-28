@@ -3,7 +3,7 @@ import { SITE } from "@/lib/site";
 import Gallery from "@/components/Gallery";
 
 export default function Home() {
-  const { photos, albums } = manifest;
+  const { photos } = manifest;
 
   return (
     <main>
@@ -12,7 +12,7 @@ export default function Home() {
         <h1 className="title">{SITE.title}</h1>
       </header>
 
-      <Gallery photos={photos} albums={albums} />
+      <Gallery photos={photos} />
     </main>
   );
 }

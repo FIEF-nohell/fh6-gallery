@@ -1,30 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { Album, Photo } from "@/lib/gallery";
-
-function orientationLabel(p: Photo) {
-  return p.orientation === "portrait" ? "▯ Portrait" : "▭ Landscape";
-}
-
-function Chip({
-  label,
-  count,
-  active,
-  onClick,
-}: {
-  label: string;
-  count: number;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button className="chip" data-active={active} onClick={onClick}>
-      {label}
-      <sup>{count}</sup>
-    </button>
-  );
-}
+import { useCallback, useEffect, useState } from "react";
+import type { Photo } from "@/lib/gallery";
 
 function PhotoTile({
   photo,
@@ -35,23 +12,13 @@ function PhotoTile({
   index: number;
   onOpen: (i: number) => void;
 }) {
-  const [loaded, setLoaded] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const fallback = photo.full;
-
-  // If the image finished loading before React attached onLoad (e.g. from
-  // cache), reveal it on mount so it never stays stuck behind the blur.
-  useEffect(() => {
-    if (imgRef.current?.complete) setLoaded(true);
-  }, []);
-
   return (
     <div
       className="tile"
       style={{ "--i": index } as React.CSSProperties}
       role="button"
       tabIndex={0}
-      aria-label={`Open ${photo.title}`}
+      aria-label="Open photo"
       onClick={() => onOpen(index)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -68,54 +35,26 @@ function PhotoTile({
           backgroundImage: `url("${photo.blurDataURL}")`,
         }}
       >
-        <img
-          ref={imgRef}
-          src={fallback}
-          alt={photo.title}
-          loading="lazy"
-          decoding="async"
-          className={loaded ? "loaded" : ""}
-          onLoad={() => setLoaded(true)}
-        />
-      </div>
-      <div className="meta">
-        <span>
-          <span className="m-title">{photo.title}</span>
-          <span className="m-album">{photo.albumName}</span>
-        </span>
+        <img src={photo.src} alt="" loading="lazy" decoding="async" />
       </div>
     </div>
   );
 }
 
-export default function Gallery({
-  photos,
-  albums,
-}: {
-  photos: Photo[];
-  albums: Album[];
-}) {
-  const [active, setActive] = useState<string>("all");
+export default function Gallery({ photos }: { photos: Photo[] }) {
   const [index, setIndex] = useState<number | null>(null);
-
-  const filtered = active === "all" ? photos : photos.filter((p) => p.album === active);
 
   const close = useCallback(() => setIndex(null), []);
   const go = useCallback(
     (dir: number) => {
       setIndex((prev) => {
         if (prev === null) return prev;
-        const n = filtered.length;
+        const n = photos.length;
         return (prev + dir + n) % n;
       });
     },
-    [filtered.length]
+    [photos.length]
   );
-
-  // Reset lightbox when switching collections so the index stays valid.
-  useEffect(() => {
-    setIndex(null);
-  }, [active]);
 
   useEffect(() => {
     if (index === null) return;
@@ -132,33 +71,15 @@ export default function Gallery({
     };
   }, [index, close, go]);
 
-  const current = index === null ? null : filtered[index];
+  const current = index === null ? null : photos[index];
 
   return (
     <>
-      <nav className="filters">
-        <Chip
-          label="All"
-          count={photos.length}
-          active={active === "all"}
-          onClick={() => setActive("all")}
-        />
-        {albums.map((a) => (
-          <Chip
-            key={a.slug}
-            label={a.name}
-            count={a.count}
-            active={active === a.slug}
-            onClick={() => setActive(a.slug)}
-          />
-        ))}
-      </nav>
-
-      {filtered.length === 0 ? (
-        <p className="empty">No captures in this collection yet.</p>
+      {photos.length === 0 ? (
+        <p className="empty">No photos yet — drop images into the content folder.</p>
       ) : (
         <div className="grid">
-          {filtered.map((p, i) => (
+          {photos.map((p, i) => (
             <PhotoTile key={p.id} photo={p} index={i} onOpen={setIndex} />
           ))}
         </div>
@@ -169,13 +90,13 @@ export default function Gallery({
           className="lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label={current.title}
+          aria-label="Photo viewer"
           onClick={close}
         >
           <div className="lb-top" onClick={(e) => e.stopPropagation()}>
             <span className="lb-counter">
               <b>{String((index ?? 0) + 1).padStart(2, "0")}</b> /{" "}
-              {String(filtered.length).padStart(2, "0")}
+              {String(photos.length).padStart(2, "0")}
             </span>
             <button className="lb-close" onClick={close} aria-label="Close">
               ✕
@@ -187,15 +108,15 @@ export default function Gallery({
               className="lb-nav"
               onClick={() => go(-1)}
               aria-label="Previous photo"
-              disabled={filtered.length < 2}
+              disabled={photos.length < 2}
             >
               ‹
             </button>
             <figure className="lb-figure">
               <img
                 key={current.id}
-                src={current.full}
-                alt={current.title}
+                src={current.src}
+                alt=""
                 style={{ backgroundImage: `url("${current.blurDataURL}")` }}
               />
             </figure>
@@ -203,27 +124,10 @@ export default function Gallery({
               className="lb-nav"
               onClick={() => go(1)}
               aria-label="Next photo"
-              disabled={filtered.length < 2}
+              disabled={photos.length < 2}
             >
               ›
             </button>
-          </div>
-
-          <div className="lb-meta" onClick={(e) => e.stopPropagation()}>
-            <h2>{current.title}</h2>
-            <span className="lb-album">{current.albumName}</span>
-            {current.tags.map((t) => (
-              <span key={t} className="lb-tag">
-                {t}
-              </span>
-            ))}
-            <span className="lb-tech">
-              <span>{orientationLabel(current)}</span>
-              <span>
-                {current.width}×{current.height}
-              </span>
-            </span>
-            {current.caption && <span className="lb-caption">{current.caption}</span>}
           </div>
         </div>
       )}
