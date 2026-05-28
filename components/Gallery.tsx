@@ -76,7 +76,7 @@ export default function Gallery({ photos }: { photos: Photo[] }) {
   return (
     <>
       {photos.length === 0 ? (
-        <p className="empty">No photos yet — drop images into the content folder.</p>
+        <p className="empty">No photos yet — drop images into the raw_fh6 folder.</p>
       ) : (
         <div className="grid">
           {photos.map((p, i) => (

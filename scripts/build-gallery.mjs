@@ -1,5 +1,5 @@
 // Pre-deploy gallery builder.
-// Scans content/ (any depth) for images, measures each one's width/height,
+// Scans raw_fh6/ (any depth) for images, measures each one's width/height,
 // optimizes it to WebP, generates a tiny blur-up placeholder, and writes
 // data/manifest.json for the site. No albums, no tags — just the photos.
 //
@@ -12,7 +12,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const CONTENT_DIR = path.join(ROOT, "content");
+const RAW_FH6_DIR = path.join(ROOT, "raw_fh6");
 const OUTPUT_DIR = path.join(ROOT, "public", "gallery");
 const MANIFEST_PATH = path.join(ROOT, "data", "manifest.json");
 
@@ -29,7 +29,7 @@ function slugify(name) {
     .replace(/^-+|-+$/g, "");
 }
 
-// Recursively collect every image under content/, regardless of folders.
+// Recursively collect every image under raw_fh6/, regardless of folders.
 async function walk(dir, base) {
   const out = [];
   let entries;
@@ -97,7 +97,7 @@ async function main() {
   await fs.mkdir(OUTPUT_DIR, { recursive: true });
   await fs.mkdir(path.dirname(MANIFEST_PATH), { recursive: true });
 
-  const images = await walk(CONTENT_DIR, CONTENT_DIR);
+  const images = await walk(RAW_FH6_DIR, RAW_FH6_DIR);
 
   const photos = [];
   for (const img of images) {
